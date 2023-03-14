@@ -12,23 +12,22 @@ bot = Bot(TOKEN_API)
 dp = Dispatcher(bot)
 
 
-@dp.message_handler(commands = ["stat"])
-async def printStat(message: types.Message):
-    reportOverall = []
+@dp.message_handler(commands=["stat"])
+async def print_stat(message: types.Message):
+    report_overall = []
     my_conn = f.connectToDB()
     with my_conn:
         with my_conn.cursor() as cursor:
             sql = sqlQueries.stat
             cursor.execute(sql)
     for row in cursor:
-        if (row[1] + row[2] + row[3]) < 2:
-            reportOverall.append(f"{row[0]} - {row[1]+row[2]+row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard) А ГДЕ??")
-        else:
-            reportOverall.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
-    await message.answer("Решенные задачи:\n" + "\n".join(reportOverall))
-@dp.message_handler(commands = ["today"])
-async def printTodayStat(message: types.Message):
-    reportToday = []
+        report_overall.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
+    await message.answer("Решенные задачи:\n" + "\n".join(report_overall))
+
+
+@dp.message_handler(commands=["today"])
+async def print_today_stat(message: types.Message):
+    report_today = []
     my_conn = f.connectToDB()
     with my_conn:
         with my_conn.cursor() as cursor:
@@ -36,14 +35,49 @@ async def printTodayStat(message: types.Message):
             cursor.execute(sql)
     for row in cursor:
         if (row[1] + row[2] + row[3]) < 2:
-            reportToday.append(
-                f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard) А ГДЕ??")
+            report_today.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard) А ГДЕ??")
         else:
-            reportToday.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
-    if len(reportToday) > 0:
-        await message.answer("Решенные задачи за сегодня:\n" + "\n".join(reportToday))
+            report_today.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
+    if len(report_today) > 0:
+        await message.answer("Решенные задачи за сегодня:\n" + "\n".join(report_today))
     else:
         await message.answer(f"Сегодня не было решено ни одной задачи")
+
+
+@dp.message_handler(commands=["yesterday"])
+async def print_yesterday_stat(message: types.Message):
+    report_yesterday = []
+    my_conn = f.connectToDB()
+    with my_conn:
+        with my_conn.cursor() as cursor:
+            sql = sqlQueries.yesterday
+            cursor.execute(sql)
+    for row in cursor:
+        if (row[1] + row[2] + row[3]) < 2:
+            report_yesterday.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard) А ГДЕ??")
+        else:
+            report_yesterday.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
+    if len(report_yesterday) > 0:
+        await message.answer("Решенные задачи за вчера:\n" + "\n".join(report_yesterday))
+    else:
+        await message.answer(f"Вчера не было решено ни одной задачи")
+
+
+@dp.message_handler(commands=["week"])
+async def print_week_stat(message: types.Message):
+    report_week = []
+    my_conn = f.connectToDB()
+    with my_conn:
+        with my_conn.cursor() as cursor:
+            sql = sqlQueries.yesterday
+            cursor.execute(sql)
+    for row in cursor:
+        report_week.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
+    if len(report_week) > 0:
+        await message.answer("Решенные задачи за неделю:\n" + "\n".join(report_week))
+    else:
+        await message.answer(f"За эту неделю не было решено ни одной задачи")
+
 @dp.message_handler(content_types = [ContentType.PHOTO, ContentType.TEXT])
 async def captureChallengeReport(message: types.Message):
     if message.text is None:
