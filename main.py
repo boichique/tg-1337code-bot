@@ -10,35 +10,56 @@ import clases as c
 bot = Bot(TOKEN_API)
 dp = Dispatcher(bot)
 
-@dp.message_handler(commands = ['stat'])
+
+@dp.message_handler(commands = ["stat"])
 async def printStat(message: types.Message):
-    rows = []
+    reportOverall = []
     my_conn = f.connectToDB()
     with my_conn:
         with my_conn.cursor() as cursor:
-            sql = """SELECT level, GROUP_CONCAT(DISTINCT name separator \' \') AS name, COUNT(id) AS count 
-                    FROM tgChallengeBot.reports 
-                    WHERE DATE(date) = CURDATE() 
-                    GROUP BY id, level
-                    ORDER BY id DESC"""
+            sql = """SELECT name, 
+                    IFNULL((SELECT COUNT(id) FROM tgChallengeBot.reports AS t2 WHERE t1.name = t2.name AND level like "easy" GROUP BY id), 0) AS easy,
+                    IFNULL((SELECT COUNT(id) FROM tgChallengeBot.reports AS t2 WHERE t1.name = t2.name AND level like "medium" GROUP BY id), 0) AS medium,
+                    IFNULL((SELECT COUNT(id) FROM tgChallengeBot.reports AS t2 WHERE t1.name = t2.name AND level like "hard" GROUP BY id), 0) AS hard
+                    FROM tgChallengeBot.reports AS t1
+                    GROUP BY name"""
             cursor.execute(sql)
+
     for row in cursor:
-        f.addInReportArrayLevels(row, rows)
+        if (row[1] + row[2] + row[3]) < 2:
+            reportOverall.append(f"{row[0]} - {row[1]+row[2]+row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard) А ГДЕ??")
+        else:
+            reportOverall.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
 
-    # my_conn = f.connectToDB()
-    # with my_conn:
-    #     with my_conn.cursor() as cursor:
-    #         sql = """SELECT level, GROUP_CONCAT(DISTINCT name separator \' \') AS name, COUNT(id) AS count
-    #                 FROM tgChallengeBot.reports
-    #                 WHERE DATE(date) = CURDATE()
-    #                 GROUP BY id, level
-    #                 ORDER BY id"""
-    #         cursor.execute(sql)                    общая сумма задач за сегодня
+    await message.answer("Решенные задачи:\n" + "\n".join(reportOverall))
 
-    if len(rows) > 0:
-        await message.answer("Решенные задачи за сегодня:\n" + "\n".join(rows))
+
+@dp.message_handler(commands = ["today"])
+async def printTodayStat(message: types.Message):
+    reportToday = []
+    my_conn = f.connectToDB()
+    with my_conn:
+        with my_conn.cursor() as cursor:
+            sql = """SELECT name, 
+                    IFNULL((SELECT COUNT(id) FROM tgChallengeBot.reports AS t2 WHERE t1.name = t2.name AND level like "easy" GROUP BY id), 0) AS easy,
+                    IFNULL((SELECT COUNT(id) FROM tgChallengeBot.reports AS t2 WHERE t1.name = t2.name AND level like "medium" GROUP BY id), 0) AS medium,
+                    IFNULL((SELECT COUNT(id) FROM tgChallengeBot.reports AS t2 WHERE t1.name = t2.name AND level like "hard" GROUP BY id), 0) AS hard
+                    FROM tgChallengeBot.reports AS t1
+                    WHERE DATE(date) = CURDATE() 
+                    GROUP BY name"""
+            cursor.execute(sql)
+
+    for row in cursor:
+        if (row[1] + row[2] + row[3]) < 2:
+            reportToday.append(
+                f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard) А ГДЕ??")
+        else:
+            reportToday.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
+
+    if len(reportToday) > 0:
+        await message.answer("Решенные задачи за сегодня:\n" + "\n".join(reportToday))
     else:
-        await message.answer(f'Сегодня не было решено ни одной задачи')
+        await message.answer(f"Сегодня не было решено ни одной задачи")
 
 
 @dp.message_handler(content_types = [ContentType.PHOTO, ContentType.TEXT])
@@ -51,12 +72,12 @@ async def captureChallengeReport(message: types.Message):
     link = ''
     description = ''
     for mess in (m.split()):
-        if mess.lower() in ['easy', 'medium', 'hard']:
+        if mess.lower() in ["easy", "medium", "hard"]:
             level = mess.lower()
-        elif 'leetcode.com/problems' in mess:
+        elif "leetcode.com/problems" in mess:
             link = mess.lower()
         elif re.match('\w+', mess):
-            description += mess + ' '
+            description += mess + " "
     if len(level) > 0 and len(link) > 0:
         if message.from_user.username:
             username = message.from_user.username
@@ -70,13 +91,13 @@ async def captureChallengeReport(message: types.Message):
                         VALUES (%s, %s, %s, %s, %s, %s)"""
                 cursor.execute(sql, (info.id,
                                      info.userName,
-                                     info.date.strftime('%Y-%m-%d %H:%M:%S'),
+                                     info.date.strftime("%Y-%m-%d %H:%M:%S"),
                                      info.level,
                                      info.link,
                                      info.description))
                 my_conn.commit()
-        await message.answer('Запись о задаче была сохранена.')
+        await message.answer("Запись о задаче была сохранена.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     executor.start_polling(dp, skip_updates = True)
