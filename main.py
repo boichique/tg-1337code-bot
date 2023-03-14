@@ -1,6 +1,7 @@
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import ContentType
 from config import TOKEN_API
+import sqlQueries
 import re
 import cryptography
 import funcs as f
@@ -17,51 +18,32 @@ async def printStat(message: types.Message):
     my_conn = f.connectToDB()
     with my_conn:
         with my_conn.cursor() as cursor:
-            sql = """SELECT name, 
-                    IFNULL((SELECT COUNT(id) FROM tgChallengeBot.reports AS t2 WHERE t1.name = t2.name AND level like "easy" GROUP BY id), 0) AS easy,
-                    IFNULL((SELECT COUNT(id) FROM tgChallengeBot.reports AS t2 WHERE t1.name = t2.name AND level like "medium" GROUP BY id), 0) AS medium,
-                    IFNULL((SELECT COUNT(id) FROM tgChallengeBot.reports AS t2 WHERE t1.name = t2.name AND level like "hard" GROUP BY id), 0) AS hard
-                    FROM tgChallengeBot.reports AS t1
-                    GROUP BY name"""
+            sql = sqlQueries.stat
             cursor.execute(sql)
-
     for row in cursor:
         if (row[1] + row[2] + row[3]) < 2:
             reportOverall.append(f"{row[0]} - {row[1]+row[2]+row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard) А ГДЕ??")
         else:
             reportOverall.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
-
     await message.answer("Решенные задачи:\n" + "\n".join(reportOverall))
-
-
 @dp.message_handler(commands = ["today"])
 async def printTodayStat(message: types.Message):
     reportToday = []
     my_conn = f.connectToDB()
     with my_conn:
         with my_conn.cursor() as cursor:
-            sql = """SELECT name, 
-                    IFNULL((SELECT COUNT(id) FROM tgChallengeBot.reports AS t2 WHERE t1.name = t2.name AND level like "easy" GROUP BY id), 0) AS easy,
-                    IFNULL((SELECT COUNT(id) FROM tgChallengeBot.reports AS t2 WHERE t1.name = t2.name AND level like "medium" GROUP BY id), 0) AS medium,
-                    IFNULL((SELECT COUNT(id) FROM tgChallengeBot.reports AS t2 WHERE t1.name = t2.name AND level like "hard" GROUP BY id), 0) AS hard
-                    FROM tgChallengeBot.reports AS t1
-                    WHERE DATE(date) = CURDATE() 
-                    GROUP BY name"""
+            sql = sqlQueries.today
             cursor.execute(sql)
-
     for row in cursor:
         if (row[1] + row[2] + row[3]) < 2:
             reportToday.append(
                 f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard) А ГДЕ??")
         else:
             reportToday.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
-
     if len(reportToday) > 0:
         await message.answer("Решенные задачи за сегодня:\n" + "\n".join(reportToday))
     else:
         await message.answer(f"Сегодня не было решено ни одной задачи")
-
-
 @dp.message_handler(content_types = [ContentType.PHOTO, ContentType.TEXT])
 async def captureChallengeReport(message: types.Message):
     if message.text is None:
@@ -87,8 +69,7 @@ async def captureChallengeReport(message: types.Message):
         my_conn = f.connectToDB()
         with my_conn:
             with my_conn.cursor() as cursor:
-                sql = """INSERT INTO reports (`id`, `name`, `date`, `level`, `link`, `description`) 
-                        VALUES (%s, %s, %s, %s, %s, %s)"""
+                sql = sqlQueries.insert
                 cursor.execute(sql, (info.id,
                                      info.userName,
                                      info.date.strftime("%Y-%m-%d %H:%M:%S"),
