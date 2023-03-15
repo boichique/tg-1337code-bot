@@ -109,7 +109,7 @@ async def capture_challenge_report(message: types.Message):
             with my_conn.cursor() as cursor:
                 sql = sqlQueries.insert
                 cursor.execute(sql, (info.id,
-                                     info.userName,
+                                     info.username,
                                      info.date.strftime("%Y-%m-%d %H:%M:%S"),
                                      info.level,
                                      info.link,
