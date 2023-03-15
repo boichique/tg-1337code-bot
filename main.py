@@ -1,11 +1,8 @@
-import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.types import ParseMode, ContentType
-from aiogram.utils import executor, exceptions
-from config import TOKEN_API
+from aiogram.types import ContentType
+from aiogram.utils import executor
+import config
 import sqlQueries
 import re
 import cryptography
@@ -13,7 +10,7 @@ import funcs as f
 import clases as c
 
 
-bot = Bot(TOKEN_API)
+bot = Bot(config.TOKEN_API)
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
@@ -75,7 +72,7 @@ async def print_week_stat(message: types.Message):
     my_conn = f.connect_to_db()
     with my_conn:
         with my_conn.cursor() as cursor:
-            sql = sqlQueries.yesterday
+            sql = sqlQueries.week
             cursor.execute(sql)
     for row in cursor:
         report_week.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
@@ -85,7 +82,7 @@ async def print_week_stat(message: types.Message):
         await message.answer(f"За эту неделю не было решено ни одной задачи")
 
 
-@dp.message_handler(content_types = [ContentType.PHOTO, ContentType.TEXT])
+@dp.message_handler(content_types=[ContentType.PHOTO, ContentType.TEXT])
 async def capture_challenge_report(message: types.Message):
     if message.text is None:
         m = message.caption
@@ -119,6 +116,8 @@ async def capture_challenge_report(message: types.Message):
                                      info.description))
                 my_conn.commit()
         await message.answer("Запись о задаче была сохранена.")
+
+
 
 
 # @task.report_daily_task(86400)  # указывается время в секундах (в данном примере - 24 часа).

@@ -1,9 +1,10 @@
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
+
 class TaskReport:
-    def __init__(self, id, userName, date, level, link, description):
+    def __init__(self, id, username, date, level, link, description):
         self.id = id
-        self.userName = userName
+        self.username = username
         self.date = date
         self.level = level
         self.link = link
