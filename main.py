@@ -150,5 +150,6 @@ async def shutdown():                                            # Закрыт�
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
+    loop.create_task(schedule_messages())
     executor.start_polling(dp, skip_updates=True)
     loop.close()
