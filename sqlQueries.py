@@ -28,3 +28,4 @@ week = """SELECT name,
 
 insert = """INSERT INTO reports (`id`, `name`, `date`, `level`, `link`, `description`) 
         VALUES (%s, %s, %s, %s, %s, %s);"""
+
