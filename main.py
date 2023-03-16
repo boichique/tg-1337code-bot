@@ -2,6 +2,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import ContentType
 from aiogram.utils import executor
+import aiohttp
 import asyncio
 import re
 import cryptography
@@ -141,7 +142,13 @@ async def schedule_messages():                                      # Ежедн
         await asyncio.sleep(86400)
 
 
+async def shutdown():                                            # Закрытие сессий бота
+    await bot.session.close()
+    await dp.storage.close()
+    await dp.storage.wait_closed()
+
+
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    loop.create_task(schedule_messages())
     executor.start_polling(dp, skip_updates=True)
+    loop.close()
