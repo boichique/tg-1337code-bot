@@ -3,7 +3,6 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import ContentType
 from aiogram.utils import executor
 import asyncio
-import aiocron
 import re
 import cryptography
 
@@ -37,7 +36,7 @@ async def print_stat(message: types.Message):
             cursor.execute(sql)
     for row in cursor:
         report_overall.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
-    await message.answer("Решенные задачи:\n" + "\n".join(report_overall))
+    await message.answer("Решенные задачи:\n\n" + "\n".join(report_overall))
 
 
 @dp.message_handler(commands=["today"])
@@ -54,7 +53,7 @@ async def print_today_stat(message: types.Message):
         else:
             report_today.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
     if len(report_today) > 0:
-        await message.answer("Решенные задачи за сегодня:\n" + "\n".join(report_today))
+        await message.answer("Решенные задачи за сегодня:\n\n" + "\n".join(report_today))
     else:
         await message.answer(f"Сегодня не было решено ни одной задачи")
 
@@ -73,7 +72,7 @@ async def print_yesterday_stat(message: types.Message):
         else:
             report_yesterday.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
     if len(report_yesterday) > 0:
-        await message.answer("Решенные задачи за вчера:\n" + "\n".join(report_yesterday))
+        await message.answer("Решенные задачи за вчера:\n\n" + "\n".join(report_yesterday))
     else:
         await message.answer(f"Вчера не было решено ни одной задачи")
 
@@ -89,7 +88,7 @@ async def print_week_stat(message: types.Message):
     for row in cursor:
         report_week.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
     if len(report_week) > 0:
-        await message.answer("Решенные задачи за неделю:\n" + "\n".join(report_week))
+        await message.answer("Решенные задачи за неделю:\n\n" + "\n".join(report_week))
     else:
         await message.answer(f"За эту неделю не было решено ни одной задачи")
 
@@ -135,9 +134,10 @@ async def capture_challenge_report(message: types.Message):
         await message.answer("Запись о задаче была сохранена.")
 
 
-async def schedule_messages():                                    # Отправка отчетов по расписанию
-    while True:
-        await funcs.send_message()
+async def schedule_messages():                                      # Ежедневная отправка отчетов по расписанию и
+    while True:                                                     # пин отчета в чате
+        message_id = await funcs.send_message()
+        await bot.pin_chat_message(config.CHAT_ID, message_id)
         await asyncio.sleep(86400)
 
 

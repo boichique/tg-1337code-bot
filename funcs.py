@@ -20,4 +20,5 @@ async def send_message():
             cursor.execute(sql)
     for row in cursor:
         report_daily_stat.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
-    await bot.send_message(config.CHAT_ID, "Статистика на сегодняшний день:\n\n" + "\n".join(report_daily_stat))
+    message = await bot.send_message(config.CHAT_ID, "Статистика на сегодняшний день:\n\n" + "\n".join(report_daily_stat))
+    return message.message_id
