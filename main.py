@@ -2,12 +2,15 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import ContentType
 from aiogram.utils import executor
-import config
-import sqlQueries
+import asyncio
+import aiocron
 import re
 import cryptography
-import funcs as f
-import clases as c
+
+import config
+import sqlQueries
+import funcs
+import clases
 
 
 bot = Bot(config.TOKEN_API)
@@ -23,10 +26,11 @@ async def print_help(message: types.Message):
                          "/yesterday - вывод статистики по челленджу за вчера\n" +
                          "/week - вывод статистики по челленджу за неделю")
 
+
 @dp.message_handler(commands=["stat"])
 async def print_stat(message: types.Message):
     report_overall = []
-    my_conn = f.connect_to_db()
+    my_conn = funcs.connect_to_db()
     with my_conn:
         with my_conn.cursor() as cursor:
             sql = sqlQueries.stat
@@ -39,7 +43,7 @@ async def print_stat(message: types.Message):
 @dp.message_handler(commands=["today"])
 async def print_today_stat(message: types.Message):
     report_today = []
-    my_conn = f.connect_to_db()
+    my_conn = funcs.connect_to_db()
     with my_conn:
         with my_conn.cursor() as cursor:
             sql = sqlQueries.today
@@ -58,7 +62,7 @@ async def print_today_stat(message: types.Message):
 @dp.message_handler(commands=["yesterday"])
 async def print_yesterday_stat(message: types.Message):
     report_yesterday = []
-    my_conn = f.connect_to_db()
+    my_conn = funcs.connect_to_db()
     with my_conn:
         with my_conn.cursor() as cursor:
             sql = sqlQueries.yesterday
@@ -77,7 +81,7 @@ async def print_yesterday_stat(message: types.Message):
 @dp.message_handler(commands=["week"])
 async def print_week_stat(message: types.Message):
     report_week = []
-    my_conn = f.connect_to_db()
+    my_conn = funcs.connect_to_db()
     with my_conn:
         with my_conn.cursor() as cursor:
             sql = sqlQueries.week
@@ -88,6 +92,11 @@ async def print_week_stat(message: types.Message):
         await message.answer("Решенные задачи за неделю:\n" + "\n".join(report_week))
     else:
         await message.answer(f"За эту неделю не было решено ни одной задачи")
+
+
+@dp.message_handler(commands=["chatId"])                            # Команда для вывода id чата (id нужен для
+async def print_chat_id(message: types.Message):                    # отправки сообщений по расписанию)
+    await message.answer(f"id этого чата - {message.chat.id}")
 
 
 @dp.message_handler(content_types=[ContentType.PHOTO, ContentType.TEXT])
@@ -111,8 +120,8 @@ async def capture_challenge_report(message: types.Message):
             username = message.from_user.username
         else:
             username = message.from_user.first_name
-        info = c.TaskReport(message.from_user.id, username, message.date, level, link, description)
-        my_conn = f.connect_to_db()
+        info = clases.TaskReport(message.from_user.id, username, message.date, level, link, description)
+        my_conn = funcs.connect_to_db()
         with my_conn:
             with my_conn.cursor() as cursor:
                 sql = sqlQueries.insert
@@ -126,26 +135,13 @@ async def capture_challenge_report(message: types.Message):
         await message.answer("Запись о задаче была сохранена.")
 
 
-
-
-# @task.report_daily_task(86400)  # указывается время в секундах (в данном примере - 24 часа).
-# async def daily_send():
-#     current_time = datetime.datetime.now().strftime("%H:%M:%S")
-#     chats = [123456789, 987654321]  # список id чатов, которым нужно отправить сообщение
-#     report_daily = []
-#     my_conn = f.connect_to_db()
-#     with my_conn:
-#         with my_conn.cursor() as cursor:
-#             sql = sqlQueries.stat
-#             cursor.execute(sql)
-#     for row in cursor:
-#         report_daily.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
-#     await bot.send_message(msg.from_user.id, msg.text)
-# ("Решенные задачи:\n" + "\n".join(report_daily))
-
-
-# daily_send.start()
+async def schedule_messages():                                    # Отправка отчетов по расписанию
+    while True:
+        await funcs.send_message()
+        await asyncio.sleep(86400)
 
 
 if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates = True)
+    loop = asyncio.get_event_loop()
+    loop.create_task(schedule_messages())
+    executor.start_polling(dp, skip_updates=True)
