@@ -1,6 +1,7 @@
 import pymysql
 import config
 import sqlQueries
+import datetime
 from main import bot
 
 
@@ -20,5 +21,6 @@ async def send_message():
             cursor.execute(sql)
     for row in cursor:
         report_daily_stat.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
-    message = await bot.send_message(config.CHAT_ID, "Статистика на сегодняшний день:\n\n" + "\n".join(report_daily_stat))
+    today = datetime.date.today()
+    message = await bot.send_message(config.CHAT_ID, "Статистика на " + today.strftime('%d/%m') + ":\n\n" + "\n".join(report_daily_stat))
     return message.message_id
