@@ -15,6 +15,14 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 
+@dp.message_handler(commands=["help"])
+async def print_help(message: types.Message):
+    await message.answer("Доступные команды:\n\n" +
+                         "/stat - вывод статистики за все время челленджа\n" +
+                         "/today - вывод статистики по челленджу за сегодня\n" +
+                         "/yesterday - вывод статистики по челленджу за вчера\n" +
+                         "/week - вывод статистики по челленджу за неделю")
+
 @dp.message_handler(commands=["stat"])
 async def print_stat(message: types.Message):
     report_overall = []
