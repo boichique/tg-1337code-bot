@@ -1,7 +1,3 @@
-import aiohttp
-import asyncio
-
-
 class TaskReport:
     def __init__(self, id, username, date, level, link, description):
         self.id = id

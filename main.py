@@ -2,12 +2,17 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import ContentType
 from aiogram.utils import executor
+from bs4 import BeautifulSoup
 import asyncio
 import re
 import cryptography
+import requests
+import json
+import datetime
+import markdownify
 
 import config
-import sqlQueries
+import queries
 import funcs
 import clases
 
@@ -21,6 +26,7 @@ dp = Dispatcher(bot, storage=storage)
 async def print_help(message: types.Message):
     await message.answer("Доступные команды:\n\n" +
                          "/stat - вывод статистики за все время челленджа\n" +
+                         "/daily - вывод сегодняшнего дейлика\n" +
                          "/today - вывод статистики по челленджу за сегодня\n" +
                          "/yesterday - вывод статистики по челленджу за вчера\n" +
                          "/week - вывод статистики по челленджу за неделю")
@@ -32,7 +38,7 @@ async def print_stat(message: types.Message):
     my_conn = funcs.connect_to_db()
     with my_conn:
         with my_conn.cursor() as cursor:
-            sql = sqlQueries.stat
+            sql = queries.stat
             cursor.execute(sql)
     for row in cursor:
         report_overall.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
@@ -45,7 +51,7 @@ async def print_today_stat(message: types.Message):
     my_conn = funcs.connect_to_db()
     with my_conn:
         with my_conn.cursor() as cursor:
-            sql = sqlQueries.today
+            sql = queries.today
             cursor.execute(sql)
     for row in cursor:
         if (row[1] + row[2] + row[3]) < 2:
@@ -64,7 +70,7 @@ async def print_yesterday_stat(message: types.Message):
     my_conn = funcs.connect_to_db()
     with my_conn:
         with my_conn.cursor() as cursor:
-            sql = sqlQueries.yesterday
+            sql = queries.yesterday
             cursor.execute(sql)
     for row in cursor:
         if (row[1] + row[2] + row[3]) < 2:
@@ -83,7 +89,7 @@ async def print_week_stat(message: types.Message):
     my_conn = funcs.connect_to_db()
     with my_conn:
         with my_conn.cursor() as cursor:
-            sql = sqlQueries.week
+            sql = queries.week
             cursor.execute(sql)
     for row in cursor:
         report_week.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
@@ -91,6 +97,24 @@ async def print_week_stat(message: types.Message):
         await message.answer("Решенные задачи за неделю:\n\n" + "\n".join(report_week))
     else:
         await message.answer(f"За эту неделю не было решено ни одной задачи")
+
+
+@dp.message_handler(commands=["daily"])
+async def send_dailyque(message: types.Message):
+    query = queries.graphql
+    json_data = json.loads(requests.post("https://leetcode.com/graphql/", json={'query': query}).text)
+    soup = BeautifulSoup(json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["content"], "html5lib")
+    await message.answer(f"""Дейлик на {datetime.datetime.today().strftime("%d/%m/%Y")}
+
+Ссылка на задачу: https://leetcode.com{json_data["data"]["activeDailyCodingChallengeQuestion"]["link"]}
+
+Сложность: {json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["difficulty"]}
+
+Название: {json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["title"]}
+
+
+Описание: 
+{soup.text}""")
 
 
 @dp.message_handler(commands=["chatId"])                            # Команда для вывода id чата (id нужен для
@@ -123,7 +147,7 @@ async def capture_challenge_report(message: types.Message):
         my_conn = funcs.connect_to_db()
         with my_conn:
             with my_conn.cursor() as cursor:
-                sql = sqlQueries.insert
+                sql = queries.insert
                 cursor.execute(sql, (info.id,
                                      info.username,
                                      info.date.strftime("%Y-%m-%d %H:%M:%S"),
@@ -134,14 +158,16 @@ async def capture_challenge_report(message: types.Message):
         await message.answer("Запись о задаче была сохранена.")
 
 
-async def schedule_messages():                                      # Ежедневная отправка отчетов по расписанию и
-    while True:                                                     # пин отчета в чате
-        message_id = await funcs.send_message()
-        await bot.pin_chat_message(config.CHAT_ID, message_id)
-        await asyncio.sleep(86400)
+async def schedule_messages():
+    while True:
+        message_id = await funcs.send_daily_stat()                  # Ежедневная отправка отчетов по расписанию и
+        await bot.pin_chat_message(config.CHAT_ID, message_id)      # пин отчета в чате
+        await asyncio.sleep(43200)
+        await funcs.send_daily_challenge()                          # Ежедневная отправка дейликов по расписанию
+        await asyncio.sleep(43200)
 
 
-async def shutdown():                                            # Закрытие сессий бота
+async def shutdown():                                               # Закрытие сессий бота
     await bot.session.close()
     await dp.storage.close()
     await dp.storage.wait_closed()
