@@ -103,7 +103,7 @@ async def print_week_stat(message: types.Message):
 async def send_dailyque(message: types.Message):
     query = queries.graphql
     json_data = json.loads(requests.post("https://leetcode.com/graphql/", json={'query': query}).text)
-    soup = BeautifulSoup(json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["content"], "html5lib")
+    soup = BeautifulSoup(json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["content"], "html.parser")
     await message.answer(f"""Дейлик на {datetime.datetime.today().strftime("%d/%m/%Y")}
 
 Ссылка на задачу: https://leetcode.com{json_data["data"]["activeDailyCodingChallengeQuestion"]["link"]}
