@@ -9,7 +9,6 @@ import cryptography
 import requests
 import json
 import datetime
-import markdownify
 
 import config
 import queries
@@ -34,87 +33,38 @@ async def print_help(message: types.Message):
 
 @dp.message_handler(commands=["stat"])
 async def print_stat(message: types.Message):
-    report_overall = []
-    my_conn = funcs.connect_to_db()
-    with my_conn:
-        with my_conn.cursor() as cursor:
-            sql = queries.stat
-            cursor.execute(sql)
-    for row in cursor:
-        report_overall.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
-    await message.answer("Решенные задачи:\n\n" + "\n".join(report_overall))
+    funcs.motivating_report(message, "все время", "За все время")
 
 
 @dp.message_handler(commands=["today"])
 async def print_today_stat(message: types.Message):
-    report_today = []
-    my_conn = funcs.connect_to_db()
-    with my_conn:
-        with my_conn.cursor() as cursor:
-            sql = queries.today
-            cursor.execute(sql)
-    for row in cursor:
-        if (row[1] + row[2] + row[3]) < 2:
-            report_today.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard) А ГДЕ??")
-        else:
-            report_today.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
-    if len(report_today) > 0:
-        await message.answer("Решенные задачи за сегодня:\n\n" + "\n".join(report_today))
-    else:
-        await message.answer(f"Сегодня не было решено ни одной задачи")
+    funcs.motivating_report(message, "сегодня", "Сегодня")
 
 
 @dp.message_handler(commands=["yesterday"])
 async def print_yesterday_stat(message: types.Message):
-    report_yesterday = []
-    my_conn = funcs.connect_to_db()
-    with my_conn:
-        with my_conn.cursor() as cursor:
-            sql = queries.yesterday
-            cursor.execute(sql)
-    for row in cursor:
-        if (row[1] + row[2] + row[3]) < 2:
-            report_yesterday.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard) А ГДЕ??")
-        else:
-            report_yesterday.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
-    if len(report_yesterday) > 0:
-        await message.answer("Решенные задачи за вчера:\n\n" + "\n".join(report_yesterday))
-    else:
-        await message.answer(f"Вчера не было решено ни одной задачи")
+    funcs.motivating_report(message, "вчера", "Вчера")
 
 
 @dp.message_handler(commands=["week"])
 async def print_week_stat(message: types.Message):
-    report_week = []
-    my_conn = funcs.connect_to_db()
-    with my_conn:
-        with my_conn.cursor() as cursor:
-            sql = queries.week
-            cursor.execute(sql)
-    for row in cursor:
-        report_week.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
-    if len(report_week) > 0:
-        await message.answer("Решенные задачи за неделю:\n\n" + "\n".join(report_week))
-    else:
-        await message.answer(f"За эту неделю не было решено ни одной задачи")
+    funcs.motivating_report(message, "неделю", "За эту неделю")
 
 
 @dp.message_handler(commands=["daily"])
 async def send_dailyque(message: types.Message):
     query = queries.graphql
     json_data = json.loads(requests.post("https://leetcode.com/graphql/", json={'query': query}).text)
-    soup = BeautifulSoup(json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["content"], "html.parser")
+    soup = BeautifulSoup(json_data['data']['activeDailyCodingChallengeQuestion']['question']['content'], 'html.parser')
+    disc = soup.text.replace("Constraints:\n", "Constraints:")
     await message.answer(f"""Дейлик на {datetime.datetime.today().strftime("%d/%m/%Y")}
-
-Ссылка на задачу: https://leetcode.com{json_data["data"]["activeDailyCodingChallengeQuestion"]["link"]}
-
-Сложность: {json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["difficulty"]}
-
-Название: {json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["title"]}
-
-
-Описание: 
-{soup.text}""")
+------
+*{json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["difficulty"]}* : [{json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["title"]}](https://leetcode.com{json_data["data"]["activeDailyCodingChallengeQuestion"]["link"]})
+------
+*Описание*:
+```
+{disc}
+```""", parse_mode=types.ParseMode.MARKDOWN)
 
 
 @dp.message_handler(commands=["chatId"])                            # Команда для вывода id чата (id нужен для
@@ -155,15 +105,15 @@ async def capture_challenge_report(message: types.Message):
                                      info.link,
                                      info.description))
                 my_conn.commit()
-        await message.answer("Запись о задаче была сохранена.")
+        # await message.answer("Запись о задаче была сохранена.")
 
 
 async def schedule_messages():
     while True:
+        await funcs.send_daily_challenge()                          # Ежедневная отправка дейликов по расписанию
+        await asyncio.sleep(43200)
         message_id = await funcs.send_daily_stat()                  # Ежедневная отправка отчетов по расписанию и
         await bot.pin_chat_message(config.CHAT_ID, message_id)      # пин отчета в чате
-        await asyncio.sleep(43200)
-        await funcs.send_daily_challenge()                          # Ежедневная отправка дейликов по расписанию
         await asyncio.sleep(43200)
 
 
