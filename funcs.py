@@ -90,8 +90,7 @@ async def insert_report_into_table(message):
             username = message.from_user.username
         else:
             username = message.from_user.first_name
-        new_date_time = message.date - datetime.timedelta(hours=3)
-        info = TaskReport(message.from_user.id, username, new_date_time, level, link, description)
+        info = TaskReport(message.from_user.id, username, message.date, level, link, description)
         my_conn = connect_to_db()
         with my_conn:
             with my_conn.cursor() as cursor:
