@@ -62,16 +62,16 @@ async def print_chat_id(message: types.Message):                    # отпра
 @dp.message_handler(content_types=[ContentType.PHOTO, ContentType.TEXT])
 async def capture_challenge_report(message: types.Message):
     funcs.insert_report_into_table(message)
-    # await message.answer("Запись о задаче была сохранена.")
+    await message.answer("Запись о задаче была сохранена.")
 
 
 async def schedule_messages():
     while True:
-        text = funcs.get_daily_challenge()
-        await bot.send_message(config.CHAT_ID, text, types.ParseMode.MARKDOWN)  # Ежедневная отправка дейликов по расписанию
-        await asyncio.sleep(43200)
         message_id = await funcs.send_daily_stat()                              # Ежедневная отправка отчетов по расписанию и
         await bot.pin_chat_message(config.CHAT_ID, message_id)                  # пин отчета в чате
+        await asyncio.sleep(43200)
+        text = funcs.get_daily_challenge()
+        await bot.send_message(config.CHAT_ID, text, types.ParseMode.MARKDOWN)  # Ежедневная отправка дейликов по расписанию
         await asyncio.sleep(43200)
 
 
