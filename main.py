@@ -2,13 +2,8 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import ContentType
 from aiogram.utils import executor
-from bs4 import BeautifulSoup
 import asyncio
 import re
-import cryptography
-import requests
-import json
-import datetime
 
 import config
 import queries
@@ -25,46 +20,40 @@ dp = Dispatcher(bot, storage=storage)
 async def print_help(message: types.Message):
     await message.answer("Доступные команды:\n\n" +
                          "/stat - вывод статистики за все время челленджа\n" +
-                         "/daily - вывод сегодняшнего дейлика\n" +
                          "/today - вывод статистики по челленджу за сегодня\n" +
                          "/yesterday - вывод статистики по челленджу за вчера\n" +
-                         "/week - вывод статистики по челленджу за неделю")
+                         "/week - вывод статистики по челленджу за неделю\n" +
+                         "/daily - вывод сегодняшнего дейлика")
 
 
 @dp.message_handler(commands=["stat"])
 async def print_stat(message: types.Message):
-    funcs.motivating_report(message, "все время", "За все время")
+    text = funcs.report_on_demand("все время", "За все время", queries.stat)
+    await message.answer(text)
 
 
 @dp.message_handler(commands=["today"])
 async def print_today_stat(message: types.Message):
-    funcs.motivating_report(message, "сегодня", "Сегодня")
+    text = funcs.report_on_demand("сегодня", "Сегодня", queries.today)
+    await message.answer(text)
 
 
 @dp.message_handler(commands=["yesterday"])
 async def print_yesterday_stat(message: types.Message):
-    funcs.motivating_report(message, "вчера", "Вчера")
+    text = funcs.report_on_demand("вчера", "Вчера", queries.yesterday)
+    await message.answer(text)
 
 
 @dp.message_handler(commands=["week"])
 async def print_week_stat(message: types.Message):
-    funcs.motivating_report(message, "неделю", "За эту неделю")
+    text = funcs.report_on_demand("неделю", "За эту неделю", queries.week)
+    await message.answer(text)
 
 
 @dp.message_handler(commands=["daily"])
 async def send_dailyque(message: types.Message):
-    query = queries.graphql
-    json_data = json.loads(requests.post("https://leetcode.com/graphql/", json={'query': query}).text)
-    soup = BeautifulSoup(json_data['data']['activeDailyCodingChallengeQuestion']['question']['content'], 'html.parser')
-    disc = soup.text.replace("Constraints:\n", "Constraints:")
-    await message.answer(f"""Дейлик на {datetime.datetime.today().strftime("%d/%m/%Y")}
-------
-*{json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["difficulty"]}* : [{json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["title"]}](https://leetcode.com{json_data["data"]["activeDailyCodingChallengeQuestion"]["link"]})
-------
-*Описание*:
-```
-{disc}
-```""", parse_mode=types.ParseMode.MARKDOWN)
+    text = funcs.get_daily_challenge()
+    await message.answer(text, types.ParseMode.MARKDOWN)
 
 
 @dp.message_handler(commands=["chatId"])                            # Команда для вывода id чата (id нужен для
@@ -110,14 +99,15 @@ async def capture_challenge_report(message: types.Message):
 
 async def schedule_messages():
     while True:
-        await funcs.send_daily_challenge()                          # Ежедневная отправка дейликов по расписанию
+        text = funcs.get_daily_challenge()
+        await bot.send_message(config.CHAT_ID, text, types.ParseMode.MARKDOWN)  # Ежедневная отправка дейликов по расписанию
         await asyncio.sleep(43200)
-        message_id = await funcs.send_daily_stat()                  # Ежедневная отправка отчетов по расписанию и
-        await bot.pin_chat_message(config.CHAT_ID, message_id)      # пин отчета в чате
+        message_id = await funcs.send_daily_stat()                              # Ежедневная отправка отчетов по расписанию и
+        await bot.pin_chat_message(config.CHAT_ID, message_id)                  # пин отчета в чате
         await asyncio.sleep(43200)
 
 
-async def shutdown():                                               # Закрытие сессий бота
+async def shutdown():                                                           # Закрытие сессий бота
     await bot.session.close()
     await dp.storage.close()
     await dp.storage.wait_closed()

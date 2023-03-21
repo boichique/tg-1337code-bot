@@ -30,27 +30,31 @@ async def send_daily_stat():
     return message.message_id
 
 
-async def send_daily_challenge():
+def get_daily_challenge():
     query = queries.graphql
     json_data = json.loads(requests.post('https://leetcode.com/graphql/', json={'query': query}).text)
     soup = BeautifulSoup(json_data['data']['activeDailyCodingChallengeQuestion']['question']['content'], 'html.parser')
     disc = soup.text.replace("Constraints:\n", "Constraints:")
-    await message.answer(f"""Дейлик на {datetime.datetime.today().strftime("%d/%m/%Y")}
+    difficulty = json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["difficulty"]
+    title = json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["title"]
+    link = "https://leetcode.com" + json_data["data"]["activeDailyCodingChallengeQuestion"]["link"]
+    text=(f"""Дейлик на {datetime.datetime.today().strftime("%d/%m/%Y")}
 ------
-*{json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["difficulty"]}* : [{json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["title"]}](https://leetcode.com{json_data["data"]["activeDailyCodingChallengeQuestion"]["link"]})
+*{difficulty}* : [{title}]({link})
 ------
 *Описание*:
 ```
 {disc}
-```""", parse_mode=types.ParseMode.MARKDOWN)
+```""")
+    return text
 
 
-def motivating_report(message, day1, day2):
+def report_on_demand(day1, day2, query):
     report = []
     my_conn = connect_to_db()
     with my_conn:
         with my_conn.cursor() as cursor:
-            sql = queries.yesterday
+            sql = query
             cursor.execute(sql)
     for row in cursor:
         if (row[1] + row[2] + row[3]) < 2:
@@ -58,6 +62,7 @@ def motivating_report(message, day1, day2):
         else:
             report.append(f"{row[0]} - {row[1] + row[2] + row[3]} ({row[1]} easy {row[2]} medium {row[3]} hard)")
     if len(report) > 0:
-        await message.answer("Решенные задачи за " + day1 + ":\n\n" + "\n".join(report))
+        text = "Решенные задачи за " + day1 + ":\n\n" + "\n".join(report)
     else:
-        await message.answer(day2 + " не было решено ни одной задачи")
+        text = day2 + " не было решено ни одной задачи"
+    return text
