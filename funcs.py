@@ -40,7 +40,7 @@ def get_daily_challenge():
     difficulty = json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["difficulty"]
     title = json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["title"]
     link = "https://leetcode.com" + json_data["data"]["activeDailyCodingChallengeQuestion"]["link"]
-    text=(f"""Дейлик на {datetime.today().strftime("%d/%m/%Y")}
+    text=(f"""Дейлик на {datetime.datetime.today().strftime("%d/%m/%Y")}
 ------
 *{difficulty}* : [{title}]({link})
 ------
