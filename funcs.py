@@ -5,8 +5,10 @@ import datetime
 from bs4 import BeautifulSoup
 import requests
 import json
+import re
 
 from main import bot
+from clases import TaskReport
 
 
 def connect_to_db():
@@ -66,3 +68,37 @@ def report_on_demand(day1, day2, query):
     else:
         text = day2 + " не было решено ни одной задачи"
     return text
+
+
+def insert_report_into_table(message):
+    if message.text is None:
+        m = message.caption
+    else:
+        m = message.text
+    level = ""
+    link = ""
+    description = ""
+    for mess in (m.split()):
+        if mess.lower() in ["easy", "medium", "hard"]:
+            level = mess.lower()
+        elif "leetcode.com/problems" in mess:
+            link = mess.lower()
+        elif re.match("\w+", mess):
+            description += mess + " "
+    if len(level) > 0 and len(link) > 0:
+        if message.from_user.username:
+            username = message.from_user.username
+        else:
+            username = message.from_user.first_name
+        info = TaskReport(message.from_user.id, username, message.date, level, link, description)
+        my_conn = connect_to_db()
+        with my_conn:
+            with my_conn.cursor() as cursor:
+                sql = queries.insert
+                cursor.execute(sql, (info.id,
+                                     info.username,
+                                     info.date.strftime("%Y-%m-%d %H:%M:%S"),
+                                     info.level,
+                                     info.link,
+                                     info.description))
+                my_conn.commit()

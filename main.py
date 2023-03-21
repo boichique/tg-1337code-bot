@@ -3,12 +3,10 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import ContentType
 from aiogram.utils import executor
 import asyncio
-import re
 
 import config
 import queries
 import funcs
-import clases
 
 
 bot = Bot(config.TOKEN_API)
@@ -46,7 +44,7 @@ async def print_yesterday_stat(message: types.Message):
 
 @dp.message_handler(commands=["week"])
 async def print_week_stat(message: types.Message):
-    text = funcs.report_on_demand("неделю", "За эту неделю", queries.week)
+    text = funcs.report_on_demand("эту неделю", "За эту неделю", queries.week)
     await message.answer(text)
 
 
@@ -57,44 +55,14 @@ async def send_dailyque(message: types.Message):
 
 
 @dp.message_handler(commands=["chatId"])                            # Команда для вывода id чата (id нужен для
-async def print_chat_id(message: types.Message):                    # отправки сообщений по расписанию)
+async def print_chat_id(message: types.Message):                    # отправки сообщений по id)
     await message.answer(f"id этого чата - {message.chat.id}")
 
 
 @dp.message_handler(content_types=[ContentType.PHOTO, ContentType.TEXT])
 async def capture_challenge_report(message: types.Message):
-    if message.text is None:
-        m = message.caption
-    else:
-        m = message.text
-    level = ""
-    link = ""
-    description = ""
-    for mess in (m.split()):
-        if mess.lower() in ["easy", "medium", "hard"]:
-            level = mess.lower()
-        elif "leetcode.com/problems" in mess:
-            link = mess.lower()
-        elif re.match("\w+", mess):
-            description += mess + " "
-    if len(level) > 0 and len(link) > 0:
-        if message.from_user.username:
-            username = message.from_user.username
-        else:
-            username = message.from_user.first_name
-        info = clases.TaskReport(message.from_user.id, username, message.date, level, link, description)
-        my_conn = funcs.connect_to_db()
-        with my_conn:
-            with my_conn.cursor() as cursor:
-                sql = queries.insert
-                cursor.execute(sql, (info.id,
-                                     info.username,
-                                     info.date.strftime("%Y-%m-%d %H:%M:%S"),
-                                     info.level,
-                                     info.link,
-                                     info.description))
-                my_conn.commit()
-        # await message.answer("Запись о задаче была сохранена.")
+    funcs.insert_report_into_table(message)
+    # await message.answer("Запись о задаче была сохранена.")
 
 
 async def schedule_messages():
