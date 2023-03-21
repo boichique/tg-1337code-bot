@@ -8,7 +8,7 @@ import json
 import re
 
 from main import bot
-from clases import TaskReport
+from classes import TaskReport
 
 
 def connect_to_db():
@@ -40,7 +40,7 @@ def get_daily_challenge():
     difficulty = json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["difficulty"]
     title = json_data["data"]["activeDailyCodingChallengeQuestion"]["question"]["title"]
     link = "https://leetcode.com" + json_data["data"]["activeDailyCodingChallengeQuestion"]["link"]
-    text=(f"""Дейлик на {datetime.datetime.today().strftime("%d/%m/%Y")}
+    text=(f"""Дейлик на {datetime.today().strftime("%d/%m/%Y")}
 ------
 *{difficulty}* : [{title}]({link})
 ------
@@ -70,7 +70,7 @@ def report_on_demand(day1, day2, query):
     return text
 
 
-def insert_report_into_table(message):
+async def insert_report_into_table(message):
     if message.text is None:
         m = message.caption
     else:
@@ -90,15 +90,17 @@ def insert_report_into_table(message):
             username = message.from_user.username
         else:
             username = message.from_user.first_name
-        info = TaskReport(message.from_user.id, username, message.date, level, link, description)
+        new_date_time = message.date - datetime.timedelta(hours=3)
+        info = TaskReport(message.from_user.id, username, new_date_time, level, link, description)
         my_conn = connect_to_db()
         with my_conn:
             with my_conn.cursor() as cursor:
                 sql = queries.insert
                 cursor.execute(sql, (info.id,
                                      info.username,
-                                     info.date.strftime("%Y-%m-%d %H:%M:%S"),
+                                     info.date.strftime('%Y-%m-%d %H:%M:%S'),
                                      info.level,
                                      info.link,
                                      info.description))
                 my_conn.commit()
+        await bot.send_message(config.REPORT_CHAT_ID, "Запись о задаче была сохранена.")

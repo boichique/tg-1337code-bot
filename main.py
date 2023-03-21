@@ -61,8 +61,7 @@ async def print_chat_id(message: types.Message):                    # отпра
 
 @dp.message_handler(content_types=[ContentType.PHOTO, ContentType.TEXT])
 async def capture_challenge_report(message: types.Message):
-    funcs.insert_report_into_table(message)
-    await bot.send_message(config.REPORT_CHAT_ID, "Запись о задаче была сохранена.")
+    await funcs.insert_report_into_table(message)
 
 
 async def schedule_messages():
